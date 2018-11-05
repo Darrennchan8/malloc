@@ -7,10 +7,10 @@
 #include "malloc.h"
 
 #define META_SIZE sizeof(struct allocation_block)
+#define align(size) size + (8 - ((int) size + META_SIZE) % 8) % 8
 #define TRUE 1
 #define FALSE 0
 
-// TODO: allocation_blocks go sequentially upwards. We can optimize our program with this.
 struct allocation_block {
     size_t size;
     struct allocation_block *next;
@@ -20,10 +20,6 @@ struct allocation_block {
 
 struct allocation_block* allocation_head = NULL;
 struct allocation_block* allocation_tail = NULL;
-
-size_t align(size_t size) {
-    return size + (8 - ((int) size + META_SIZE) % 8) % 8;
-}
 
 /**
  * Finds the best-fitting (smallest possible) free block of size at least `size`, or NULL if it doesn't exist.
@@ -41,10 +37,21 @@ struct allocation_block* find_free_block_best_fit(size_t size) {
     return best_fit;
 }
 
+/**
+ * Finds the allocation_block associated with a particular memory allocation, or NULL if none match.
+ *
+ * @param ptr The memory allocation pointer to the data (e.g: returned by a function like `malloc`).
+ * @return The allocation_block associated with ptr, or NULL if none match.
+ */
 struct allocation_block* find_allocation_block_for_allocation(void* ptr) {
     for (struct allocation_block* block = allocation_head; block; block = block->next) {
         if (block + 1 == ptr) {
             return block;
+        }
+        // Since the heap grows upwards, we can stop checking if we start seeing allocation blocks that are greater than
+        // our target ptr.
+        if ((void*) block > ptr) {
+            break;
         }
     }
     return NULL;
@@ -57,6 +64,7 @@ struct allocation_block* find_allocation_block_for_allocation(void* ptr) {
  * @return The allocation block, or NULL if sbrk failed.
  */
 struct allocation_block* request_space(size_t size) {
+    // Extend and reuse the tail if possible.
     if (allocation_tail && allocation_tail->free) {
         if (sbrk((int) (size - allocation_tail->size)) == (void*) -1) {
             return NULL;
@@ -70,6 +78,7 @@ struct allocation_block* request_space(size_t size) {
         return NULL;
     }
 
+    // Initialize the new tail.
     block->free = FALSE;
     block->next = NULL;
     block->size = size;
@@ -82,6 +91,14 @@ struct allocation_block* request_space(size_t size) {
     return allocation_tail = block;
 }
 
+/**
+ * Partitions an allocation_block and splits into left and right allocation_blocks, if the new right portion can hold at
+ * least 8 bytes in addition to the size of the meta information.
+ *
+ * @param left The allocation_block to split.
+ * @param size The required data size for the left block.
+ * @return The right allocation_block, or NULL if we aren't able to split.
+ */
 struct allocation_block* split_if_possible(struct allocation_block* left, size_t size) {
     size_t right_size = left->size - size;
     if (right_size >= 8 + META_SIZE) {
@@ -173,14 +190,11 @@ void* malloc(size_t size) {
     return allocated_block + 1;
 }
 
-void free(void* ptr) {
-    for (struct allocation_block* block = allocation_head; block; block = block->next) {
-        if (block + 1 == ptr) {
-            block->free = TRUE;
-            merge_adjacent_free(block);
-            return;
-        }
-    }
+void* calloc(size_t num_elements, size_t element_size) {
+    size_t size = align(num_elements * element_size);
+    void* ptr = malloc(size);
+    memset(ptr, 0, size);
+    return ptr;
 }
 
 void* realloc(void* ptr, size_t size) {
@@ -220,9 +234,12 @@ void* realloc(void* ptr, size_t size) {
     }
 }
 
-void* calloc(size_t num_elements, size_t element_size) {
-    size_t size = align(num_elements * element_size);
-    void* ptr = malloc(size);
-    memset(ptr, 0, size);
-    return ptr;
+void free(void* ptr) {
+    for (struct allocation_block* block = allocation_head; block; block = block->next) {
+        if (block + 1 == ptr) {
+            block->free = TRUE;
+            merge_adjacent_free(block);
+            return;
+        }
+    }
 }
