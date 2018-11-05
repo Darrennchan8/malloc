@@ -145,24 +145,23 @@ void* realloc(void* ptr, size_t size) {
     size = align(size);
     struct allocation_block* target_block = allocation_head;
     for (; target_block && target_block + 1 != ptr; target_block = target_block->next);
-    void* new_ptr;
     if (target_block) {
         if (target_block->size >= size) {
             split_if_possible(target_block, size);
-            new_ptr = target_block + 1;
+            return target_block + 1;
         } else {
             // TODO: Handle when the previous block is free and the next block might be free.
             // TODO: Handle when tail is free (only need to adjust program break a little).
-            new_ptr = malloc(size);
+            void* new_ptr = malloc(size);
             size_t copy_size = target_block->size > size ? size : target_block->size;
             memcpy(new_ptr, target_block + 1, copy_size);
             merge_adjacent_free(target_block);
+            return new_ptr;
         }
     } else {
         // Either ptr is NULL or ptr doesn't have an associated target_block.
-        new_ptr = malloc(size);
+        return malloc(size);
     }
-    return new_ptr;
 }
 
 void* calloc(size_t num_elements, size_t element_size) {
