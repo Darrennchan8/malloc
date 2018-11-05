@@ -42,6 +42,15 @@ struct allocation_block* find_free_block_best_fit(size_t size) {
     return best_fit;
 }
 
+struct allocation_block* find_allocation_block_for_allocation(void* ptr) {
+    for (struct allocation_block* block = allocation_head; block; block = block->next) {
+        if (block + 1 == ptr) {
+            return block;
+        }
+    }
+    return NULL;
+}
+
 /**
  * Links a new block after allocation_tail with size `size` or extends allocation_tail if free.
  *
@@ -153,8 +162,7 @@ void* realloc(void* ptr, size_t size) {
         return malloc(size);
     }
     size = align(size);
-    struct allocation_block* target_block = allocation_head;
-    for (; target_block && target_block + 1 != ptr; target_block = target_block->next);
+    struct allocation_block* target_block = find_allocation_block_for_allocation(ptr);
     if (target_block) {
         if (target_block->size >= size) {
             split_if_possible(target_block, size);
