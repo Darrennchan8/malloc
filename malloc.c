@@ -48,6 +48,7 @@ struct allocation_block* find_free_block_best_fit(size_t size) {
  * @return The newly created allocation block, or NULL if sbrk failed.
  */
 struct allocation_block* request_space(size_t size) {
+    // TODO: Handle when tail is free (only need to adjust program break a little).
     struct allocation_block *block = sbrk(0);
     void *request = sbrk(META_SIZE + size);
     assert(block == request);
@@ -155,7 +156,6 @@ void* realloc(void* ptr, size_t size) {
             return target_block + 1;
         } else {
             // TODO: Handle when the previous block is free and the next block might be free.
-            // TODO: Handle when tail is free (only need to adjust program break a little).
             void* new_ptr = malloc(size);
             size_t copy_size = target_block->size > size ? size : target_block->size;
             memcpy(new_ptr, target_block + 1, copy_size);
