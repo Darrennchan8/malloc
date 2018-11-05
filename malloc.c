@@ -6,7 +6,6 @@
 #include <string.h>
 #include "malloc.h"
 
-#define min(a, b) a < b ? a : b
 #define META_SIZE sizeof(struct allocation_block)
 #define TRUE 1
 #define FALSE 0
@@ -104,6 +103,13 @@ struct allocation_block* split_if_possible(struct allocation_block* left, size_t
     return NULL;
 }
 
+/**
+ * Merges the current block with surrounding blocks if available and returns a pointer to the merged block. If the
+ * current block is not free, the merged block is guaranteed to have the same data as the original block after merging.
+ *
+ * @param block The block to merge with adjacent blocks.
+ * @return A pointer to the merged block.
+ */
 struct allocation_block* merge_adjacent_free(struct allocation_block* block) {
     struct allocation_block* previous_block = block->previous;
     struct allocation_block* next_block = block->next;
@@ -134,6 +140,23 @@ struct allocation_block* merge_adjacent_free(struct allocation_block* block) {
     return block;
 }
 
+/**
+ * merge_free_right is the same as `merge_adjacent_free` but it only merges with the right block when avaliable. Since
+ * the pointer to the merged block will be the same with and without merging, nothing is returned.
+ *
+ * @param block The block to merge with the right block.
+ */
+void merge_free_right(struct allocation_block* block) {
+    // Pretend like the left block isn't free when necessary.
+    if (block->previous && block->previous->free) {
+        block->previous->free = FALSE;
+        merge_adjacent_free(block);
+        block->previous->free = TRUE;
+    } else {
+        merge_adjacent_free(block);
+    }
+}
+
 void* malloc(size_t size) {
     if (size <= 0) {
         return NULL;
@@ -161,28 +184,39 @@ void free(void* ptr) {
 }
 
 void* realloc(void* ptr, size_t size) {
-    if (size <= 0) {
+    size = align(size);
+    struct allocation_block* target_block = find_allocation_block_for_allocation(ptr);
+    if (size <= 0 || !target_block) {
         free(ptr);
         return malloc(size);
     }
-    size = align(size);
-    struct allocation_block* target_block = find_allocation_block_for_allocation(ptr);
-    if (target_block) {
-        if (target_block->size >= size) {
-            struct allocation_block* leftover = split_if_possible(target_block, size);
-            merge_adjacent_free(leftover);
-            return target_block + 1;
-        } else {
-            // TODO: Handle when the previous block is free and the next block might be free.
-            void* new_ptr = malloc(size);
-            memcpy(new_ptr, target_block + 1, min(size, target_block->size));
-            target_block->free = TRUE;
-            merge_adjacent_free(target_block);
-            return new_ptr;
-        }
+    size_t leftAvailable = target_block->previous && target_block->previous->free ? target_block->previous->size : 0;
+    size_t rightAvailable = target_block->next && target_block->next->free ? target_block->next->size : 0;
+
+    // When reallocating a block, here are the priorities that we will partition in.
+    // 1. Reuse (current block + merge with right block).
+    //    Since merging with right is an O(1) operation, we can preemptively merge with the right block over just
+    //    partitioning the current block to avoid 2 consecutive free blocks to the right, limiting fragmentation.
+    // 2. Reuse all adjacent blocks.
+    //    Since merging with left is an O(size) operation, we should merge with left only when we can't do (1).
+    // 3. Push a new tail onto the allocation blocks.
+    //    Since this has the same time complexity as (2) but (2) limits fragmentation, we should only do this when all
+    //    other options can't be chosen.
+    if (rightAvailable + target_block->size >= size) {
+        merge_free_right(target_block);
+        split_if_possible(target_block, size);
+        return target_block + 1;
+    } else if (leftAvailable + rightAvailable + target_block->size >= size) {
+        target_block = merge_adjacent_free(target_block);
+        split_if_possible(target_block, size);
+        return target_block + 1;
     } else {
-        // Either ptr is NULL or ptr doesn't have an associated target_block.
-        return malloc(size);
+        // size is guaranteed to be less than target_block's size.
+        void* new_ptr = malloc(size);
+        memcpy(new_ptr, target_block + 1, size);
+        target_block->free = TRUE;
+        merge_adjacent_free(target_block);
+        return new_ptr;
     }
 }
 
