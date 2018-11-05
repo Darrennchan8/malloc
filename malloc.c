@@ -26,15 +26,19 @@ size_t align(size_t size) {
 }
 
 /**
- * Finds the next free block given a starting position, or NULL if it doesn't exist.
+ * Finds the best-fitting (smallest possible) free block of size at least `size`, or NULL if it doesn't exist.
  *
- * @param last A an allocation block pointer. The program finds the next block that has a size of at least `size`.
  * @param size The size needed for the allocation block.
- * @return The starting position of the allocation block, or NULL if there aren't any of enough size.
+ * @return The best-fitting allocation block, or NULL if there aren't any of enough size.
  */
-struct allocation_block* find_free_block(struct allocation_block *last, size_t size) {
-    for (; last && !(last->free && last->size >= size); last = last->next);
-    return last;
+struct allocation_block* find_free_block_best_fit(size_t size) {
+    struct allocation_block* best_fit = NULL;
+    for (struct allocation_block *last = allocation_head; last; last = last->next) {
+        if (last->free && last->size >= size) {
+            best_fit = best_fit && best_fit->size <= last->size ? best_fit : last;
+        }
+    }
+    return best_fit;
 }
 
 /**
@@ -116,7 +120,7 @@ void* malloc(size_t size) {
         return NULL;
     }
     size = align(size);
-    struct allocation_block* allocated_block = find_free_block(allocation_head, size);
+    struct allocation_block* allocated_block = find_free_block_best_fit(size);
     if (allocated_block) {
         allocated_block->free = FALSE;
         split_if_possible(allocated_block, size);
