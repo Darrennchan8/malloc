@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 #include "malloc.h"
+
+#define min(a, b) a < b ? a : b
 #define META_SIZE sizeof(struct allocation_block)
 #define TRUE 1
 #define FALSE 0
@@ -160,8 +162,8 @@ void* realloc(void* ptr, size_t size) {
         } else {
             // TODO: Handle when the previous block is free and the next block might be free.
             void* new_ptr = malloc(size);
-            size_t copy_size = target_block->size > size ? size : target_block->size;
-            memcpy(new_ptr, target_block + 1, copy_size);
+            memcpy(new_ptr, target_block + 1, min(size, target_block->size));
+            target_block->free = TRUE;
             merge_adjacent_free(target_block);
             return new_ptr;
         }

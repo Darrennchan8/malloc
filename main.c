@@ -31,16 +31,16 @@ int main() {
     name[10] = 'n';
     name[11] = '\0';
     printf("%s == Darren Chan\n", name);
-    printf("%p == %p\n", (void*) nineChars, (void*) name);
+    printf("%p == %p\n", (void*) oneChar, (void*) name);
     printf("sbrk shouldn't change: %p\n\n", sbrk(0));
 
     char* twoCharsAgain = malloc(2 * sizeof(char));
-    printf("%p == %p\n", (void*) twoChars, (void*) twoCharsAgain);
+    printf("%p != %p\n", (void*) twoChars, (void*) twoCharsAgain);
     printf("sbrk shouldn't change: %p\n", sbrk(0));
     free(twoCharsAgain);
 
     char* eightChars = malloc(8 * sizeof(char));
-    printf("%p == %p\n", (void*) twoChars, (void*) eightChars);
+    printf("%p == %p\n", (void*) twoCharsAgain, (void*) eightChars);
     printf("sbrk shouldn't change: %p\n\n", sbrk(0));
 
     int* numbersToEighteen = calloc(18, sizeof(int));
