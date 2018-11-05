@@ -83,7 +83,7 @@ struct allocation_block* request_space(size_t size) {
     return allocation_tail = block;
 }
 
-void split_if_possible(struct allocation_block* left, size_t size) {
+struct allocation_block* split_if_possible(struct allocation_block* left, size_t size) {
     size_t right_size = left->size - size;
     if (right_size >= 8 + META_SIZE) {
         left->size = size;
@@ -99,7 +99,9 @@ void split_if_possible(struct allocation_block* left, size_t size) {
         if (left == allocation_tail) {
             allocation_tail = right;
         }
+        return right;
     }
+    return NULL;
 }
 
 struct allocation_block* merge_adjacent_free(struct allocation_block* block) {
@@ -114,7 +116,9 @@ struct allocation_block* merge_adjacent_free(struct allocation_block* block) {
             next_block->previous = previous_block;
         }
         previous_block->size += META_SIZE + block->size;
-        memcpy(previous_block + 1, block + 1, block->size);
+        if (!block->free) {
+            memcpy(previous_block + 1, block + 1, block->size);
+        }
         block = previous_block;
     }
     if (next_block && next_block->free) {
@@ -165,7 +169,8 @@ void* realloc(void* ptr, size_t size) {
     struct allocation_block* target_block = find_allocation_block_for_allocation(ptr);
     if (target_block) {
         if (target_block->size >= size) {
-            split_if_possible(target_block, size);
+            struct allocation_block* leftover = split_if_possible(target_block, size);
+            merge_adjacent_free(leftover);
             return target_block + 1;
         } else {
             // TODO: Handle when the previous block is free and the next block might be free.
