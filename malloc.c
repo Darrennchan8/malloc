@@ -41,29 +41,35 @@ struct allocation_block* find_free_block_best_fit(size_t size) {
 }
 
 /**
- * Links a new block after allocation_tail with size `size`.
+ * Links a new block after allocation_tail with size `size` or extends allocation_tail if free.
  *
  * @param size The size needed for the allocation block.
- * @return The newly created allocation block, or NULL if sbrk failed.
+ * @return The allocation block, or NULL if sbrk failed.
  */
 struct allocation_block* request_space(size_t size) {
-    // TODO: Handle when tail is free (only need to adjust program break a little).
+    if (allocation_tail && allocation_tail->free) {
+        if (sbrk((int) (size - allocation_tail->size)) == (void*) -1) {
+            return NULL;
+        }
+        allocation_tail->free = FALSE;
+        allocation_tail->size = size;
+        return allocation_tail;
+    }
     struct allocation_block *block = sbrk(META_SIZE + size);
     if (block == (void*) -1) {
         return NULL;
     }
 
-    block->size = size;
-    block->next = NULL;
     block->free = FALSE;
+    block->next = NULL;
+    block->size = size;
     if (allocation_tail) {
         allocation_tail->next = block;
     } else {
         allocation_head = block;
     }
     block->previous = allocation_tail;
-    allocation_tail = block;
-    return block;
+    return allocation_tail = block;
 }
 
 void split_if_possible(struct allocation_block* left, size_t size) {
