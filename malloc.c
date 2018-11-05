@@ -3,7 +3,6 @@
 //
 
 #include <unistd.h>
-#include <assert.h>
 #include <string.h>
 #include "malloc.h"
 #define META_SIZE sizeof(struct allocation_block)
@@ -49,10 +48,8 @@ struct allocation_block* find_free_block_best_fit(size_t size) {
  */
 struct allocation_block* request_space(size_t size) {
     // TODO: Handle when tail is free (only need to adjust program break a little).
-    struct allocation_block *block = sbrk(0);
-    void *request = sbrk(META_SIZE + size);
-    assert(block == request);
-    if (request == (void*) -1) {
+    struct allocation_block *block = sbrk(META_SIZE + size);
+    if (block == (void*) -1) {
         return NULL;
     }
 
