@@ -12,6 +12,9 @@
 #define FALSE 0
 
 struct allocation_block {
+#ifdef __DEBUG__
+    size_t requested_size;
+#endif
     size_t size;
     struct allocation_block *next;
     struct allocation_block *previous;
@@ -178,14 +181,17 @@ void* malloc(size_t size) {
     if (size <= 0) {
         return NULL;
     }
-    size = align(size);
-    struct allocation_block* allocated_block = find_free_block_best_fit(size);
+    size_t aligned_size = align(size);
+    struct allocation_block* allocated_block = find_free_block_best_fit(aligned_size);
     if (allocated_block) {
         allocated_block->free = FALSE;
-        split_if_possible(allocated_block, size);
+        split_if_possible(allocated_block, aligned_size);
     } else {
         // Allocate a new block.
-        allocated_block = request_space(size);
+        allocated_block = request_space(aligned_size);
+#ifdef __DEBUG__
+        allocated_block->requested_size = size;
+#endif
     }
     return allocated_block + 1;
 }
