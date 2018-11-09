@@ -204,9 +204,11 @@ void* realloc(void* ptr, size_t size) {
     size_t rightAvailable = target_block->next && target_block->next->free ? target_block->next->size : 0;
 
     // When reallocating a block, here are the priorities that we will partition by.
-    // 1. Reuse (current block + merge with right block).
-    //    Since merging with right is an O(1) operation, we can preemptively merge with the right block over just
-    //    partitioning the current block to avoid 2 consecutive free blocks to the right, limiting fragmentation.
+    // 1. Reuse (current block + extend right).
+    //    Since merging with right is an O(1) operation, we can preemptively merge with the right block and then
+    //    repartition over just partitioning the current block to avoid 2 consecutive free blocks to the right,
+    //    limiting fragmentation. If there isn't a next block (i.e: the current block is the tail), we can simply extend
+    //    sbrk, to be as efficient as possible.
     // 2. Reuse all adjacent blocks.
     //    Since merging with left is an O(size) operation, we should merge with left only when we can't do (1).
     // 3. Push a new tail onto the allocation blocks.
@@ -215,6 +217,10 @@ void* realloc(void* ptr, size_t size) {
     if (rightAvailable + target_block->size >= size) {
         merge_free_right(target_block);
         split_if_possible(target_block, size);
+        return target_block + 1;
+    } else if (target_block == allocation_tail) {
+        target_block->free = TRUE;
+        request_space(size);
         return target_block + 1;
     } else if (leftAvailable + rightAvailable + target_block->size >= size) {
         target_block = merge_adjacent_free(target_block);

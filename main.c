@@ -71,10 +71,11 @@ int main() {
     sbrk_should(STAY_THE_SAME);
     assert_ptr_eq(oneChar, twoChars);
 
-    char* nineChars = realloc(twoChars, 9 * sizeof(char));
+    char* nineChars = calloc(9, sizeof(char));
     sbrk_should(INCREASE);
     assert_ptr_neq(twoChars, nineChars);
 
+    free(twoChars);
     free(nineChars);
     char* name = calloc(12, sizeof(char));
     sprintf(name, "Darren Chan");
@@ -136,4 +137,16 @@ int main() {
     char* e = malloc(8);
     assert_ptr_eq(c, e);
     assert_ptr_neq(a, e);
+    free(b);
+    free(d);
+    free(e);
+    sbrk_should(STAY_THE_SAME);
+
+    // Tests that allocating uses the tail if free, even if we need to increment sbrk.
+    long* bigArray = calloc(25, sizeof(long));
+    sbrk_should(INCREASE);
+    long* bigArray2 = realloc(bigArray, 26 * sizeof(long));
+    assert_that("sbrk should only increase one sizeof(long).", previous_sbrk + sizeof(long) == sbrk(0));
+    assert_ptr_eq(bigArray, bigArray2);
+    sbrk_should(INCREASE);
 }
