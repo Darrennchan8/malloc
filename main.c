@@ -4,6 +4,8 @@
 #include <string.h>
 #include "malloc.h"
 
+#define sbrk_should(option) assert_sbrk_should(option, -1)
+#define INITIALIZE 0
 #define DECREASE 1
 #define STAY_THE_SAME 2
 #define INCREASE 3
@@ -19,21 +21,35 @@ void assert_that(char* message, int expression) {
     }
 }
 
-void sbrk_should(int option) {
+void assert_sbrk_should(int option, int by) {
     void* current_sbrk = sbrk(0);
-    char message[100];
+    char message[150];
     switch (option) {
+        case INITIALIZE:
+            printf("Initial program break: %p\n", current_sbrk);
+            previous_sbrk = current_sbrk;
+            return;
         case DECREASE:
-            sprintf(message, "Program break should decrease (previous=%p, current=%p).", previous_sbrk, current_sbrk);
-            assert_that(message, current_sbrk < previous_sbrk);
+            if (by >= 0) {
+                sprintf(message, "Program break should decrease by %d (previous=%p, current=%p).", by, previous_sbrk, current_sbrk);
+                assert_that(message, previous_sbrk - by == current_sbrk);
+            } else {
+                sprintf(message, "Program break should decrease (previous=%p, current=%p).", previous_sbrk, current_sbrk);
+                assert_that(message, current_sbrk < previous_sbrk);
+            }
             break;
         case STAY_THE_SAME:
             sprintf(message, "Program break should stay the same (previous=%p, current=%p).", previous_sbrk, current_sbrk);
             assert_that(message, current_sbrk == previous_sbrk);
             break;
         case INCREASE:
-            sprintf(message, "Program break should increase (previous=%p, current=%p).", previous_sbrk, current_sbrk);
-            assert_that(message, current_sbrk > previous_sbrk);
+            if (by >= 0) {
+                sprintf(message, "Program break should increase by %d (previous=%p, current=%p).", by, previous_sbrk, current_sbrk);
+                assert_that(message, previous_sbrk + by == current_sbrk);
+            } else {
+                sprintf(message, "Program break should increase (previous=%p, current=%p).", previous_sbrk, current_sbrk);
+                assert_that(message, current_sbrk > previous_sbrk);
+            }
             break;
         default:
             assert_that("Invalid option for sbrk_should.", 0);
@@ -60,8 +76,7 @@ void assert_ptr_neq(void* p1, void* p2) {
 }
 
 int main() {
-    previous_sbrk = sbrk(0);
-    printf("Initial sbrk: %p\n", previous_sbrk);
+    sbrk_should(INITIALIZE);
 
     // Tests that alignment is 8 bytes.
     char* oneChar = calloc(1, sizeof(char));
@@ -75,9 +90,8 @@ int main() {
     sbrk_should(INCREASE);
     assert_ptr_neq(twoChars, nineChars);
 
-    free(twoChars);
     free(nineChars);
-    char* name = calloc(12, sizeof(char));
+    char* name = realloc(twoChars, 12 * sizeof(char));
     sprintf(name, "Darren Chan");
     assert_that("%s == Darren Chan", strcmp(name, "Darren Chan\0") == 0);
     assert_ptr_eq(oneChar, name);
@@ -146,12 +160,10 @@ int main() {
     long* bigArray = calloc(25, sizeof(long));
     sbrk_should(INCREASE);
     long* bigArray2 = realloc(bigArray, 26 * sizeof(long));
-    assert_that("sbrk should only increase one sizeof(long).", previous_sbrk + sizeof(long) == sbrk(0));
+    assert_sbrk_should(INCREASE, sizeof(long));
     assert_ptr_eq(bigArray, bigArray2);
-    sbrk_should(INCREASE);
     free(bigArray2);
     long* bigArray3 = calloc(27, sizeof(long));
-    assert_that("sbrk should only increase one sizeof(long).", previous_sbrk + sizeof(long) == sbrk(0));
+    assert_sbrk_should(INCREASE, sizeof(long));
     assert_ptr_eq(bigArray, bigArray2);
-    sbrk_should(INCREASE);
 }
