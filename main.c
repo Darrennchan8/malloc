@@ -149,4 +149,9 @@ int main() {
     assert_that("sbrk should only increase one sizeof(long).", previous_sbrk + sizeof(long) == sbrk(0));
     assert_ptr_eq(bigArray, bigArray2);
     sbrk_should(INCREASE);
+    free(bigArray2);
+    long* bigArray3 = calloc(27, sizeof(long));
+    assert_that("sbrk should only increase one sizeof(long).", previous_sbrk + sizeof(long) == sbrk(0));
+    assert_ptr_eq(bigArray, bigArray2);
+    sbrk_should(INCREASE);
 }
