@@ -10,6 +10,8 @@
 
 #ifdef __DEBUG__
 
+struct allocation_block;
+
 struct allocation_block* allocation_head;
 struct allocation_block* allocation_tail;
 
@@ -17,6 +19,16 @@ struct allocation_block* allocation_tail;
 struct allocation_block* find_allocation_block_for_allocation(void* ptr);
 
 #endif
+
+struct allocation_block {
+#ifdef __DEBUG__
+    size_t requested_size;
+#endif
+    size_t size;
+    struct allocation_block *next;
+    struct allocation_block *previous;
+    int free;
+};
 
 /**
  * Allocates some memory of size `size` and returns a pointer to the start of the block. The size allocated is

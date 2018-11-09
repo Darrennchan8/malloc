@@ -11,16 +11,6 @@
 #define TRUE 1
 #define FALSE 0
 
-struct allocation_block {
-#ifdef __DEBUG__
-    size_t requested_size;
-#endif
-    size_t size;
-    struct allocation_block *next;
-    struct allocation_block *previous;
-    int free;
-};
-
 struct allocation_block* allocation_head = NULL;
 struct allocation_block* allocation_tail = NULL;
 
@@ -213,7 +203,7 @@ void* realloc(void* ptr, size_t size) {
     size_t leftAvailable = target_block->previous && target_block->previous->free ? target_block->previous->size : 0;
     size_t rightAvailable = target_block->next && target_block->next->free ? target_block->next->size : 0;
 
-    // When reallocating a block, here are the priorities that we will partition in.
+    // When reallocating a block, here are the priorities that we will partition by.
     // 1. Reuse (current block + merge with right block).
     //    Since merging with right is an O(1) operation, we can preemptively merge with the right block over just
     //    partitioning the current block to avoid 2 consecutive free blocks to the right, limiting fragmentation.
