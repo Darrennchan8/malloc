@@ -122,4 +122,18 @@ int main() {
     int* numbersToTwentyAgain = malloc(20 * sizeof(int));
     assert_ptr_eq(tenChars, numbersToTwentyAgain);
     sbrk_should(STAY_THE_SAME);
+
+    // Tests that malloc internally uses the best-fit algorithm.
+    free(name);
+    free(eightChars);
+    free(numbersToTwentyAgain);
+    char* a = malloc(16);
+    char* b = malloc(8);
+    char* c = malloc(8);
+    char* d = malloc(8);
+    free(a);
+    free(c);
+    char* e = malloc(8);
+    assert_ptr_eq(c, e);
+    assert_ptr_neq(a, e);
 }
