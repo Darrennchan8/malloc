@@ -204,8 +204,10 @@ void* realloc(void* ptr, size_t size) {
         free(ptr);
         return malloc(size);
     }
-    size_t leftAvailable = target_block->previous && target_block->previous->free ? target_block->previous->size : 0;
-    size_t rightAvailable = target_block->next && target_block->next->free ? target_block->next->size : 0;
+    size_t leftAvailable =
+            target_block->previous && target_block->previous->free ? sizeof(struct allocation_block) + target_block->previous->size : 0;
+    size_t rightAvailable =
+            target_block->next && target_block->next->free ? sizeof(struct allocation_block) + target_block->next->size : 0;
 
     // When reallocating a block, here are the priorities that we will partition by.
     // 1. Reuse (current block + extend right).
