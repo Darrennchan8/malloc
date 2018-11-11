@@ -75,6 +75,39 @@ void assert_ptr_neq(void* p1, void* p2) {
     assert_that(message, p1 != p2);
 }
 
+void add_memory_leak_for_block(struct allocation_block* block, size_t* internal, size_t* external) {
+    *external += block->free ? block->size : 0;
+    *internal += block->free ? 0 : block->size - block->requested_size;
+}
+
+void get_total_memory_leak(size_t* internal, size_t* external) {
+    *internal = 0;
+    *external = 0;
+    for (struct allocation_block* block = allocation_head; block; block = block->next) {
+        add_memory_leak_for_block(block, internal, external);
+    }
+}
+
+void assert_memleak_eq(long exp_internal, long exp_external) {
+    size_t actual_internal, actual_external;
+    get_total_memory_leak(&actual_internal, &actual_external);
+    char message[100];
+    if (exp_internal != -1) {
+        sprintf(message, "Expect internal memory leak to be %lu bytes, got %lu.", exp_internal, actual_internal);
+        assert_that(message, exp_internal == actual_internal);
+    }
+    if (exp_external != -1) {
+        sprintf(message, "Expect external memory leak to be %lu bytes, got %lu.", exp_external, actual_external);
+        assert_that(message, exp_external == actual_external);
+    }
+}
+
+void print_memory_leak() {
+    size_t internal, external;
+    get_total_memory_leak(&internal, &external);
+    printf("Total internal memory leak: %lu bytes\nTotal external memory leak: %lu bytes.\n", internal, external);
+}
+
 int main() {
     sbrk_should(INITIALIZE);
 
@@ -166,4 +199,5 @@ int main() {
     long* bigArray3 = calloc(27, sizeof(long));
     assert_sbrk_should(INCREASE, sizeof(long));
     assert_ptr_eq(bigArray, bigArray2);
+    assert_memleak_eq(0, 0);
 }
