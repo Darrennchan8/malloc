@@ -187,7 +187,10 @@ void* malloc(size_t size) {
 }
 
 void* calloc(size_t num_elements, size_t element_size) {
-    size_t size = align(num_elements * element_size);
+    size_t size = num_elements * element_size;
+    if (size <= 0) {
+        return NULL;
+    }
     void* ptr = malloc(size);
     memset(ptr, 0, size);
     return ptr;
