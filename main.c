@@ -88,21 +88,21 @@ void get_total_memory_leak(size_t* internal, size_t* external) {
     }
 }
 
-void assert_memleak_eq(long exp_internal, long exp_external) {
+void assert_total_memleak_eq(long exp_internal, long exp_external) {
     size_t actual_internal, actual_external;
     get_total_memory_leak(&actual_internal, &actual_external);
     char message[100];
     if (exp_internal != -1) {
-        sprintf(message, "Expect internal memory leak to be %lu bytes, got %lu.", exp_internal, actual_internal);
+        sprintf(message, "Expect total internal memory leak to be %lu bytes, got %lu.", exp_internal, actual_internal);
         assert_that(message, exp_internal == actual_internal);
     }
     if (exp_external != -1) {
-        sprintf(message, "Expect external memory leak to be %lu bytes, got %lu.", exp_external, actual_external);
+        sprintf(message, "Expect total external memory leak to be %lu bytes, got %lu.", exp_external, actual_external);
         assert_that(message, exp_external == actual_external);
     }
 }
 
-void print_memory_leak() {
+void print_total_memory_leak() {
     size_t internal, external;
     get_total_memory_leak(&internal, &external);
     printf("Total internal memory leak: %lu bytes\nTotal external memory leak: %lu bytes.\n", internal, external);
@@ -199,5 +199,30 @@ int main() {
     long* bigArray3 = calloc(27, sizeof(long));
     assert_sbrk_should(INCREASE, sizeof(long));
     assert_ptr_eq(bigArray, bigArray2);
-    assert_memleak_eq(0, 0);
+    assert_total_memleak_eq(0, 0);
+
+    // Test for expected total memory leaks.
+    char* cArr = calloc(9, sizeof(char));
+    sbrk_should(INCREASE);
+    assert_total_memleak_eq(7, 0);
+    char* cArr2 = realloc(cArr, sizeof(char));
+    sbrk_should(STAY_THE_SAME);
+    assert_ptr_eq(cArr, cArr2);
+    assert_total_memleak_eq(15, 0);
+    char* cArr3 = calloc(4, sizeof(char));
+    sbrk_should(INCREASE);
+    assert_ptr_neq(cArr2, cArr3);
+    assert_total_memleak_eq(15 + 4, 0);
+    char* cArr4 = realloc(cArr2, 24 * sizeof(char));
+    sbrk_should(INCREASE);
+    assert_ptr_neq(cArr2, cArr4);
+    assert_total_memleak_eq(4, 16);
+    char* cArr5 = realloc(cArr3, 5 * sizeof(char));
+    sbrk_should(STAY_THE_SAME);
+    assert_ptr_eq(cArr3, cArr5);
+    assert_total_memleak_eq(3, 16);
+    print_total_memory_leak();
+    // malloc * 2
+    // calloc * 2
+    // realloc * 3
 }
