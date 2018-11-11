@@ -179,10 +179,10 @@ void* malloc(size_t size) {
     } else {
         // Allocate a new block.
         allocated_block = request_space(aligned_size);
-#ifdef __DEBUG__
-        allocated_block->requested_size = size;
-#endif
     }
+#ifdef __DEBUG__
+    allocated_block->requested_size = size;
+#endif
     return allocated_block + 1;
 }
 
