@@ -7,7 +7,7 @@
 #include "malloc.h"
 
 #define META_SIZE sizeof(struct allocation_block)
-#define align(size) size + (8 - ((int) size + META_SIZE) % 8) % 8
+#define align(size) ((size) + (8 - ((int) (size) + META_SIZE) % 8) % 8)
 #define TRUE 1
 #define FALSE 0
 
@@ -197,6 +197,7 @@ void* calloc(size_t num_elements, size_t element_size) {
 }
 
 void* realloc(void* ptr, size_t size) {
+    size_t requested_size = size;
     size = align(size);
     struct allocation_block* target_block = find_allocation_block_for_allocation(ptr);
     if (size <= 0 || !target_block) {
@@ -220,18 +221,27 @@ void* realloc(void* ptr, size_t size) {
     if (rightAvailable + target_block->size >= size) {
         merge_free_right(target_block);
         split_if_possible(target_block, size);
+#ifdef __DEBUG__
+        target_block->requested_size = requested_size;
+#endif
         return target_block + 1;
     } else if (target_block == allocation_tail) {
         target_block->free = TRUE;
         request_space(size);
+#ifdef __DEBUG__
+        target_block->requested_size = requested_size;
+#endif
         return target_block + 1;
     } else if (leftAvailable + rightAvailable + target_block->size >= size) {
         target_block = merge_adjacent_free(target_block);
         split_if_possible(target_block, size);
+#ifdef __DEBUG__
+        target_block->requested_size = requested_size;
+#endif
         return target_block + 1;
     } else {
         // size is guaranteed to be less than target_block's size.
-        void* new_ptr = malloc(size);
+        void* new_ptr = malloc(requested_size);
         memcpy(new_ptr, target_block + 1, size);
         target_block->free = TRUE;
         merge_adjacent_free(target_block);
