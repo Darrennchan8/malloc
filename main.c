@@ -1,3 +1,11 @@
+/*
+ * main.c
+ *
+ * Malloc test: test for malloc.c, including basic usage,
+ * alignment, efficiency and memory leak calculations.
+ *
+ * Written by Darren Chan <darrennchan8@gmail.com>
+ */
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -12,6 +20,12 @@
 
 void* previous_sbrk;
 
+/**
+ * Asserts that `expression` is truthy. Prints to stdout and aborts if `expression` is falsey (0).
+ *
+ * @param message The test message to print out.
+ * @param expression The result of the evaluated expression.
+ */
 void assert_that(char* message, int expression) {
     if (expression) {
         printf("PASSED: %s\n", message);
@@ -21,6 +35,17 @@ void assert_that(char* message, int expression) {
     }
 }
 
+/**
+ * Asserts that the program break changes by a certain amount. To test for a general increase/decrease/no change, use
+ * void sbrk_should(int option). `option` should either be:
+ *   DECREASE: 1,
+ *   STAY_THE_SAME: 2, or
+ *   INCREASE: 3
+ *
+ * @param option An option documented above.
+ * @param by The magnitude in which the program break should change by. Pass in -1 or use `sbrk_should` to use a general
+ *     change.
+ */
 void assert_sbrk_should(int option, int by) {
     void* current_sbrk = sbrk(0);
     char message[150];
@@ -57,29 +82,60 @@ void assert_sbrk_should(int option, int by) {
     previous_sbrk = current_sbrk;
 }
 
-void assert_eq(int p1, int p2) {
+/**
+ * Asserts that the 2 integers are equal.
+ *
+ * @param n The first value.
+ * @param m The second value.
+ */
+void assert_eq(int n, int m) {
     char message[50];
-    sprintf(message, "%d == %d", p1, p2);
-    assert_that(message, p1 == p2);
+    sprintf(message, "%d == %d", n, m);
+    assert_that(message, n == m);
 }
 
+/**
+ * Asserts that the 2 pointers are equal.
+ *
+ * @param p1 The first pointer.
+ * @param p2 The second pointer.
+ */
 void assert_ptr_eq(void* p1, void* p2) {
     char message[50];
     sprintf(message, "%p == %p", p1, p2);
     assert_that(message, p1 == p2);
 }
 
+/**
+ * Asserts that the 2 pointers are not equal.
+ *
+ * @param p1 The first pointer.
+ * @param p2 The second pointer.
+ */
 void assert_ptr_neq(void* p1, void* p2) {
     char message[50];
     sprintf(message, "%p != %p", p1, p2);
     assert_that(message, p1 != p2);
 }
 
+/**
+ * Adds `block`'s memory leak to `internal` and `external`.
+ *
+ * @param block The allocation block to calculate the memory leak for.
+ * @param internal A pointer to a size_t, for recording the internal memory leak.
+ * @param external A pointer to a size_t, for recording the external memory leak.
+ */
 void record_memory_leak_for_block(struct allocation_block* block, size_t* internal, size_t* external) {
     *external += block->free ? block->size : 0;
     *internal += block->free ? 0 : block->size - block->requested_size;
 }
 
+/**
+ * Gets the total memory leak and records to `internal` and `external`.
+ *
+ * @param internal A pointer to a size_t, for recording the internal memory leak.
+ * @param external A pointer to a size_t, for recording the external memory leak.
+ */
 void get_total_memory_leak(size_t* internal, size_t* external) {
     *internal = 0;
     *external = 0;
@@ -88,6 +144,12 @@ void get_total_memory_leak(size_t* internal, size_t* external) {
     }
 }
 
+/**
+ * Asserts that the total memory leak is equal to `exp_internal` and `exp_external`.
+ *
+ * @param exp_internal The expected total internal memory leak. Pass in -1 to not check.
+ * @param exp_external The expected total external memory leak. Pass in -1 to not check.
+ */
 void assert_total_memleak_eq(long exp_internal, long exp_external) {
     size_t actual_internal, actual_external;
     get_total_memory_leak(&actual_internal, &actual_external);
@@ -102,6 +164,13 @@ void assert_total_memleak_eq(long exp_internal, long exp_external) {
     }
 }
 
+/**
+ * Asserts that the memory leak for `block` is equal to `exp_internal` and `exp_external`.
+ *
+ * @param block The block to compare the memory leak for.
+ * @param exp_internal The expected internal memory leak for `block`. Pass in -1 to not check.
+ * @param exp_external The expected external memory leak for `block`. Pass in -1 to not check.
+ */
 void assert_memleak_eq(struct allocation_block* block, long exp_internal, long exp_external) {
     size_t actual_internal = 0, actual_external = 0;
     record_memory_leak_for_block(block, &actual_internal, &actual_external);
@@ -116,10 +185,21 @@ void assert_memleak_eq(struct allocation_block* block, long exp_internal, long e
     }
 }
 
+/**
+ * Asserts that the memory leak for allocation_block associated with `allocation` is equal to `exp_internal` and
+ * `exp_external`.
+ *
+ * @param allocation The allocation associated with the allocation_block to compare the memory leak for.
+ * @param exp_internal The expected internal memory leak for allocation. Pass in -1 to not check.
+ * @param exp_external The expected external memory leak for allocation. Pass in -1 to not check.
+ */
 void assert_memleak_for_allocation_eq(void* allocation, long exp_internal, long exp_external) {
     assert_memleak_eq(find_allocation_block_for_allocation(allocation), exp_internal, exp_external);
 }
 
+/**
+ * Prints the total memory leak (internal + external).
+ */
 void print_total_memory_leak() {
     size_t internal, external;
     get_total_memory_leak(&internal, &external);

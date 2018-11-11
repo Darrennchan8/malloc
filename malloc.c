@@ -1,7 +1,15 @@
-//
-// Created by Darren Chan on 11/3/18.
-//
-
+/*
+ * malloc.c
+ *
+ * Malloc library: malloc/calloc/realloc/free implementation.
+ * Does not include these standard (ANSI/SVID/...) functions:
+ *   memalign(size_t alignment, size_t n);
+ *   valloc(size_t n);
+ *   mallinfo();
+ *   mallopt(int parameter_number, int parameter_value);
+ *
+ * Written by Darren Chan <darrennchan8@gmail.com>
+ */
 #include <unistd.h>
 #include <string.h>
 #include "malloc.h"

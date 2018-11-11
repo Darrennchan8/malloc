@@ -1,16 +1,25 @@
-//
-// Created by Darren Chan on 11/3/18.
-//
+/*
+ * malloc.h
+ *
+ * Malloc library: malloc/calloc/realloc/free implementation.
+ * Does not include these standard (ANSI/SVID/...) functions:
+ *   memalign(size_t alignment, size_t n);
+ *   valloc(size_t n);
+ *   mallinfo();
+ *   mallopt(int parameter_number, int parameter_value);
+ *
+ * Written by Darren Chan <darrennchan8@gmail.com>
+ */
 #include <sys/types.h>
 
+// Typical uses of *alloc and free don't require knowing a lot of the calculations that we need to know, so only provide
+// debug information when necessary (e.g: for testing).
 #define __DEBUG__
 
 #ifndef ASSIGN3_ASSIGN3_H
 #define ASSIGN3_ASSIGN3_H
 
 #ifdef __DEBUG__
-
-struct allocation_block;
 
 struct allocation_block* allocation_head;
 struct allocation_block* allocation_tail;
